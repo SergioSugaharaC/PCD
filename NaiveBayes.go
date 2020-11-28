@@ -129,12 +129,12 @@ func Retrain(){//_datas [][]string
 		
 		go countTimes(row)
 		time.Sleep(time.Millisecond * 5)
-		// suma de alpha y calculo de probabilidades
-		waitGroup.Wait()
-		calcProbs(1.0)
-
-		fmt.Println("trained")
 	}
+	// suma de alpha y calculo de probabilidades
+	waitGroup.Wait()
+	calcProbs(1.0)
+
+	fmt.Println("trained")
 }
 
 func Test(){
@@ -158,7 +158,7 @@ func Test(){
 // funcion principal
 func main() {
 	var option string
-	var retrain, test int
+	var train, test int
 	local := os.Args[1]
 	remotes := os.Args[2:]
 	ch := make(chan Msg)
@@ -168,16 +168,17 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("dataset imported")
 	dt = datas
+	go server(local, remotes, datas, ch)
+	
 	for{
-		go server(local, remotes, datas, ch)
-
 		fmt.Print("Your option:")
 		fmt.Scanf("%s", &option)
 		sendAll(option, local, remotes)
 
-		if option == "retrain" {
-			retrain = 1
+		if option == "train" {
+			train = 1
 		}
 		if option == "test" {
 			test = 1
@@ -188,23 +189,29 @@ func main() {
 		
 		for range remotes {
 			msg := <-ch
-			if msg.Option == "retrain" {
-				retrain++
+			if msg.Option == "train" {
+				train++
 			}
 			if msg.Option == "test" {
 				test++
 			}
 			//if msg.Option == "add" {
-			//	retrain++
+			//	add++
 			//}
 		}
-		if retrain > test {
+		if train > test {
 			fmt.Println("Training Time...")
 			Retrain()
+			//train = 0
+			//test = 0
+			fmt.Println(train, test)
 			//TODO: count rows and calc probs
 		} else {
-			fmt.Println("run...")
+			fmt.Println("classifying...")
 			Test()
+			//train = 0
+			//test = 0
+			fmt.Println(train, test)
 			//TODO: send new rows and classify
 		}
 	}
@@ -234,13 +241,14 @@ func handle(conn net.Conn, local string, remotes []string, _datas [][]string, ch
 	var msg Msg
 	if err := dec.Decode(&msg); err == nil {
 		switch msg.Option {
-		case "retrain":
-			fmt.Printf("uso mensaje")
-			
-			
+		case "train":
+			fmt.Printf("Message: %v\n", msg)
+			ch <- msg
+		case "test":
 			fmt.Printf("Message: %v\n", msg)
 			ch <- msg
 		}
+		
 	}
 }
 
